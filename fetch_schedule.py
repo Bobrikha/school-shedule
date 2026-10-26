@@ -96,6 +96,15 @@ def process_image(img_bytes, force_col=None):
     return lessons
 
 
+def index(found):
+    """Подсказки для KWGT: byn — урок по номеру, nx[k] — ближайший урок с номером >= k (99 — нет)."""
+    byn = {str(l["n"]): dict(l, sm=int(l["start"][:2]) * 60 + int(l["start"][3:]),
+                             em=int(l["end"][:2]) * 60 + int(l["end"][3:])) for l in found}
+    nums = sorted(l["n"] for l in found)
+    nx = [next((n for n in nums if n >= k), 99) for k in range(14)]
+    return {"byn": byn, "nx": nx, "last": nums[-1] if nums else 0}
+
+
 def get_posts():
     r = requests.get(f"{SITE}/wp-json/wp/v2/posts",
                      params={"per_page": 10, "_fields": "link,title,content"}, timeout=30)
@@ -117,7 +126,7 @@ def main():
         d, mo, y = m.groups()
         y = "20" + y if len(y) == 2 else y
         key = f"{y}-{mo}-{d}"
-        if key in days and p["link"] in seen:
+        if key in days and p["link"] in seen and "byn" in days[key]:
             continue
         found = None
         for src in re.findall(r'<img[^>]+src="([^"]+)"', p["content"]["rendered"]):
@@ -128,7 +137,7 @@ def main():
                 log("9Б найден:", key, src)
                 break
         if found is not None:
-            days[key] = {"source": p["link"], "lessons": found}
+            days[key] = {"source": p["link"], "lessons": found, **index(found)}
             seen.add(p["link"])
         else:
             log("9Б НЕ найден в", p["link"])
