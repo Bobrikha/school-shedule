@@ -1,0 +1,21 @@
+name: update-schedule
+on:
+  schedule:
+    - cron: "*/30 4-15 * * 1-6"   # каждые 30 минут, примерно 07:00–18:00 по Красноярску (UTC+7) — поправь под свой пояс
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  run:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: sudo apt-get update && sudo apt-get install -y tesseract-ocr tesseract-ocr-rus
+      - run: pip install opencv-python-headless pytesseract requests numpy
+      - run: python fetch_schedule.py
+        env:
+          DEBUG: "1"
+      - run: |
+          git config user.name bot && git config user.email bot@users.noreply.github.com
+          git add schedule.json
+          git diff --cached --quiet || (git commit -m "update" && git push)
